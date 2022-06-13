@@ -30,7 +30,9 @@
  有兴趣的同学可以切一个分支（以您的github账号命名分支），发起 pull request 
 
 
-#### （1）项目目录
+#### （1）项目目录  
+> 测试页面由 vite-vue3构建  
+ 
 ```bash
 
 ├── src                                // 前端源代码
@@ -55,8 +57,10 @@
     "preview": "vite preview"
   },
 ```
-> npm i   安装依赖
+
+> npm i   安装依赖  
 > npm run dev 启动
+
 
 
 ## License
