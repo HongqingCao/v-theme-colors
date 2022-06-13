@@ -126,3 +126,77 @@ export const hex2rgb = (hex, weight) => {
     return color;
   }
 };
+
+
+/**
+ * 对localStorage操作
+ */
+export const _setLocalStore = (key, type, value) => {
+  if (!key) return
+  if (type === 'JSONStr') {
+    value = JSON.stringify(value)
+  }
+  localStorage.setItem(key, value)
+}
+export const _getLocalStore = (key, type) => {
+  if (!localStorage.getItem(key)) {
+    return
+  }
+  if (type === 'JSONStr') {
+    return JSON.parse(localStorage.getItem(key))
+  } else {
+    return localStorage.getItem(key)
+  }
+}
+export const _removeLocalStore = key => {
+  if (!key) return
+  localStorage.removeItem(key)
+}
+
+export const dispatchSetLocalStore = (key, type, value, obj) => {
+
+  let settings = _getLocalStore(key, 'JSONStr') || {
+    theme: 'lightBlue',
+    themeType: 'light',
+    baseColors: '',
+    themeData: '',
+    primaryIndex: 1
+  }
+
+  if (!obj) {
+    switch (type) {
+      case 'theme':
+        settings.theme = value
+        break
+      case 'themeType':
+        settings.themeType = value
+        break
+      case 'baseColors':
+        settings.baseColors = value
+        break
+      case 'themeData':
+        settings.baseColors = value
+        break
+      case 'primaryIndex':
+        settings.primaryIndex = value
+        break
+    }
+    settings = JSON.stringify(settings)
+  } else {
+    settings = JSON.stringify(value)
+  }
+
+
+  // 创建一个StorageEvent事件
+  let newStorageEvent = document.createEvent('StorageEvent');
+  const storage = {
+    setItem: function (k, val) {
+      localStorage.setItem(k, val)
+      // 初始化创建的事件
+      newStorageEvent.initStorageEvent('setItem', false, false, k, null, val, null, null)
+      // 派发对象
+      window.dispatchEvent(newStorageEvent)
+    }
+  }
+  return storage.setItem('v-theme-colors', settings)
+}

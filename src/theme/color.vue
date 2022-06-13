@@ -4,13 +4,13 @@
  * @Autor: caohq33221
  * @Date: 2022-06-08 15:47:09
  * @LastEditors: codercao
- * @LastEditTime: 2022-06-08 17:43:16
+ * @LastEditTime: 2022-06-09 14:29:43
 -->
 
 <template>
   <div class="color-warpper" id="color-warpper">
     <div class="left">
-      <h2 class="color-se-cai">Color 色彩</h2>
+      <h2 class="color-se-cai" @click="clickfile">Color 色彩</h2>
       <p>
         为了避免视觉传达差异，使用一套特定的调色板来规定颜色，为你所搭建的产品提供一致的外观视觉感受
       </p>
@@ -24,7 +24,7 @@
               :class="[item.theme == themeType ? 'active' : '']"
               :style="{ background: item.color }"
             >
-              <span v-if="item.theme == themeType">✔</span>
+              <span v-if="item.theme == themeType">√</span>
               <h4>{{ item.name }}</h4>
             </div>
           </div>
@@ -32,20 +32,34 @@
       </div>
 
       <div class="deom-item">
-        <h3 class="zhu-se">主题主色列表</h3>
+        <div class="title">
+          <h3 class="zhu-se">主题主色列表</h3>
+          <div class="down">
+            <sapn class="save">保存</sapn>（替换本地文件）暂未开放
+          </div>
+        </div>
         <div class="them-item">
           <div
             class="them-list"
             v-for="(item, index) in themePrimaryList[themeType]"
             :key="item.color"
-            @click="change(item.theme, 'themePrimary', index)"
           >
-            <h4>{{ item.name }}</h4>
             <div
               class="color"
               :class="[item.theme == theme ? 'active' : '']"
               :style="{ background: item.color }"
-            ></div>
+            >
+              <div class="edit">编辑</div>
+              <div class="delete">删除</div>
+            </div>
+            <div class="top-warpper">
+              <el-radio
+                :label="item.theme"
+                v-model="theme"
+                @change="change(item.theme, 'themePrimary', index)"
+                >{{ item.name }}</el-radio
+              >
+            </div>
           </div>
           <div class="them-list">
             <div class="color add">+添加</div>
@@ -60,8 +74,14 @@
             v-for="(item, index) in comColorList"
             :key="item"
           >
-            <el-color-picker v-model="comColorList[index]" />
+            <div
+              class="color"
+              :style="{ background: comColorList[index] }"
+            ></div>
             <h4>{{ item }}</h4>
+          </div>
+          <div class="them-list">
+            <div class="color add">+添加</div>
           </div>
         </div>
       </div>
@@ -75,18 +95,18 @@
               class="demo-color-box"
               :style="{ background: variables['--c-primary'] }"
             >
-              <div class="title">主题色</div>
+              <div class="titles">主题色</div>
               <div class="color">
-                --c-primary: {{ variables['--c-primary'] }}
+                --c-primary: {{ variables["--c-primary"] }}
               </div>
               <div class="rgba">
-                --c-primary-rgb: {{ variables['--c-primary-rgb'] }}
+                --c-primary-rgb: {{ variables["--c-primary-rgb"] }}
               </div>
               <div class="hover">
-                --c-primary-hover: {{ variables['--c-primary-hover'] }}
+                --c-primary-hover: {{ variables["--c-primary-hover"] }}
               </div>
               <div class="active">
-                --c-primary-active: {{ variables['--c-primary-active'] }}
+                --c-primary-active: {{ variables["--c-primary-active"] }}
               </div>
             </div>
           </div>
@@ -110,6 +130,8 @@
       </div>
     </div>
     <div class="right">
+      <h3 class="zhu-se">常量表</h3>
+      <div>（可视化自定义配置常量功能暂未开放）</div>
       <div class="color-list">
         <div
           class="list-item"
@@ -125,92 +147,148 @@
 </template>
 
 <script>
-//import { ElColorPicker } from 'element-plus'
-import { reactive, toRefs, computed } from '@vue/reactivity'
-import { onMounted } from '@vue/runtime-core'
+import { reactive, toRefs, computed } from "@vue/reactivity";
+import { onMounted } from "@vue/runtime-core";
+import themePrimaryList from "./data/theme-data";
+import themeTypeList from "./data/base-colors";
+import { initThemes, themeMethods, initOnlyDomThemes } from "./index.js";
+import { _getLocalStore, dispatchSetLocalStore } from "./util.js";
 
-import { themeTypeList, themePrimaryList } from './data/theme-data.js'
-import { initThemes, themeMethods, initOnlyDomThemes } from './index.js'
-
-import dark from './data/base-colors-dark.js'
-import light from './data/base-colors-light.js'
-import colorColor from './business/color.js'
+import colorColor from "./business/color.js";
 
 export default {
- // components: { ElColorPicker },
   setup() {
     const state = reactive({
-      theme: 'lightBlue',
+      theme: "lightBlue",
       primaryIndex: 1,
-      themeType: 'light',
+      themeType: "light",
       variables: {},
       varKeyS: [],
-      comColorList: light,
+      comColorList: themeTypeList.light,
       systemList: [
         {
-          name: '深色',
-          color: '#202020',
-          theme: 'dark',
+          name: "深色",
+          color: "#202020",
+          theme: "dark",
         },
         {
-          name: '浅色',
-          color: '#D4D2CE',
-          theme: 'light',
+          name: "浅色",
+          color: "#D4D2CE",
+          theme: "light",
         },
       ],
-    })
+      themeData: themePrimaryList,
+      baseColors: themeTypeList,
+    });
 
     state.variables = computed(() => {
       return themeMethods.getVariables(
         state.theme,
-        themePrimaryList,
+        state.themeData,
         colorColor
-      )
-    })
+      );
+    });
 
     const change = (theme, type, index) => {
-      if (type == 'themeType') {
-        state.themeType = theme
-        state.comColorList = theme == 'light' ? light : dark
-        state.theme = themePrimaryList[theme][state.primaryIndex].theme
+      if (type == "themeType") {
+        state.themeType = theme;
+        state.comColorList =
+          theme == "light" ? state.baseColors.light : state.baseColors.dark;
+        state.theme = state.themeData[theme][state.primaryIndex].theme;
       } else {
-        state.theme = theme
-        state.primaryIndex = index
+        state.theme = theme;
+        state.primaryIndex = index;
       }
-      
-      initThemes(state.theme, themePrimaryList, colorColor, state.themeType)
-      myinitOnlyDomThemes(theme)
-    }
+      let val = {
+        theme: state.theme,
+        themeType: state.themeType,
+        baseColors: state.baseColors,
+        themeData: state.themeData,
+        primaryIndex: state.primaryIndex,
+      };
+      console.log("primaryIndex", state.theme);
+      dispatchSetLocalStore("", "", val, true);
+      initThemes(state.theme, state.themeData, colorColor, state.themeType);
+      myinitOnlyDomThemes(theme);
+    };
 
     const myinitOnlyDomThemes = (theme) => {
       // 测试 本地自定义一对多变量模式
       let valList = {
-        '--c-caohq-color-text': {
-          dark: ['#FFAA0E', '#FF4650'],
-          light: ['#FFAA0E', '#FF4650'],
+        "--c-caohq-color-text": {
+          dark: ["#FFAA0E", "#FF4650"],
+          light: ["#FFAA0E", "#FF4650"],
         },
-      }
+      };
 
       initOnlyDomThemes(
-        '#color-warpper',
+        "#color-warpper",
         theme,
-        ['darkBlue', 'lightBlue'],
+        state.themeData,
         valList,
         state.themeType
-      )
-    }
+      );
+    };
 
+    const clickfile = () => {
+      // let fileHandle
+
+      // document.querySelector('.color-se-cai').onclick = async () => {
+      //   ;[fileHandle] = await window.showOpenFilePicker()
+
+      //   const file = await fileHandle.getFile()
+      //   const writable = await fileHandle.createWritable()
+
+      //   await writable.write('This is a new line')
+      //   await writable.close()
+      // }
+
+      document.querySelector(".color-se-cai").onclick = async () => {
+        const options = {
+          types: [
+            {
+              description: "Test files",
+              accept: {
+                "text/plain": [".js"],
+              },
+            },
+          ],
+        };
+
+        const handle = await window.showSaveFilePicker(options);
+        const writable = await handle.createWritable();
+
+        await writable.write("Hello World");
+        await writable.close();
+
+        return handle;
+      };
+    };
+    const init = () => {
+      let local = _getLocalStore("v-theme-colors", "JSONStr");
+      state.theme = local && local.theme ? local.theme : "lightBlue";
+      state.themeType = local && local.themeType ? local.themeType : "light";
+      state.themeData =
+        local && local.themeData ? local.themeData : themePrimaryList;
+      state.baseColors =
+        local && local.baseColors ? local.baseColors : themeTypeList;
+      state.primaryIndex = local && local.primaryIndex ? local.primaryIndex : 1;
+    };
     onMounted(() => {
-      myinitOnlyDomThemes('darkBlue')
-    })
+      // 测试局部
+      // myinitOnlyDomThemes("lightBlue");
+      init()
+    });
+
     return {
       ...toRefs(state),
       themeList: themeTypeList,
       themePrimaryList: themePrimaryList,
       change,
-    }
+      clickfile,
+    };
   },
-}
+};
 </script>
 
 <style lang="scss" scoped>
@@ -218,6 +296,7 @@ export default {
   background: var(--c-fill-body);
   color: var(--c-text);
   padding: 20px;
+  display: flex;
   .left {
     width: calc(100% - 300px);
     .color-se-cai {
@@ -225,14 +304,24 @@ export default {
       font-size: 28px;
     }
     .deom-item {
-      .zhu-se {
+      .title {
+        display: flex;
         margin: 55px 0 20px;
+        align-items: center;
+        .down {
+          margin-left: 20px;
+          .save {
+            color: var(--c-text-link);
+            cursor: pointer;
+          }
+        }
       }
+
       .them-item {
         display: flex;
         flex-wrap: wrap;
         .them-list {
-          margin-right: 6px;
+          margin: 0 6px 6px 0;
           text-align: center;
           .them {
             color: var(--c-fill-mask);
@@ -245,13 +334,38 @@ export default {
           .color {
             width: 80px;
             height: 60px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            border: 1px solid var(--c-primary-mix-7);
+            color: var(--c-primary-hover);
+            .edit {
+              display: none;
+              &:hover {
+                color: var(--c-text-link);
+              }
+            }
+            .delete {
+              display: none;
+              &:hover {
+                color: var(--c-red);
+              }
+            }
+            &:hover {
+              .edit {
+                display: block;
+              }
+              .delete {
+                display: block;
+              }
+            }
           }
           .active {
             border: 1px solid var(--c-red);
             color: var(--c-primary-active);
           }
           .add {
-            margin-top: 21px;
             text-align: center;
             line-height: 60px;
             border: 1px solid var(--c-border);
@@ -296,11 +410,14 @@ export default {
     background: var(--c-fill-body);
     width: 300px;
     height: 100%;
+    .zhu-se {
+      color: var(--c-text);
+    }
     .color-list {
       position: absolute;
       z-index: 999;
       right: 0;
-      top: 20px;
+      margin-top: 20px;
       width: 300px;
       height: 500px;
       overflow: scroll;

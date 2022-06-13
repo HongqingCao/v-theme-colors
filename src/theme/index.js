@@ -4,54 +4,32 @@
  * @Autor: caohq33221
  * @Date: 2022-06-08 15:41:48
  * @LastEditors: codercao
- * @LastEditTime: 2022-06-08 17:34:52
+ * @LastEditTime: 2022-06-13 13:18:00
  */
 
 // theme.js
 import cssVars from "css-vars-ponyfill";
-
-import { themeTypeList, themePrimaryList } from "./data/theme-data";
+import themePrimaryList from "./data/theme-data";
+import themeTypeList from "./data/base-colors";
 import { mix, hex2rgb } from "./util.js";
 import { getRouterVar } from "./business/index.js";
 const white = "#ffffff",
   black = "#000000";
 
-/**
- * initThemes 全局初始化 主题
- * @param theme 主题 [必填]
- * @param tPrimaryList 主题列表[必填] array ['theme1','theme2']
- * @param valList 自定义主题列表 {val1:['theme1-color','theme2-color']} ....
- * @param themeType 主题类型  -深浅 ....
- * @param changeType 区分改的是主题类型，还是主题色 [ 预留字段 ]....
- * @returns {boolean}
- */
+//  自定义属性名-值对的集合
+const getVariables = (vtheme, primaryList, varList, themeType) => {
+  let type = themeType ? getThemeType(themeType) : getThemeTypeByTheme(vtheme); // 获取主题的类型 深-浅
 
-export const initThemes = (theme, tPrimaryList, varList, themeType) => {
-  let variables = getVariables(
-    theme || "lightBlue",
-    tPrimaryList,
-    varList,
-    themeType
-  );
-
-  cssVars({
-    watch: true, // 当添加，删除或修改其或元素的禁用或href属性时，ponyfill将自行调用
-    variables: variables, // variables 自定义属性名/值对的集合
-    onlyLegacy: true, // false  默认将css变量编译为浏览器识别的css样式  true 当浏览器不支持css变量的时候将css变量编译为识别的css
-  });
-};
-
-//  自定义属性名/值对的集合
-const getVariables = (theme, primaryList, varList, themeType) => {
-  let type = themeType ? themeType : getThemeType(theme); // 获取主题的类型 深-浅
   let tPrimaryList = primaryList ? primaryList[type] : themePrimaryList[type]; // 获取深浅下对应的 主题色列表
-  let C00 = getCOO(theme, tPrimaryList)[0].color; // 获取主题色
-  let color = { C00: C00, ...themeTypeList[type] }; // 拼接色组
+  let theme = vtheme ? vtheme : tPrimaryList[0].theme;
 
+  let C00 = getCOO(theme, tPrimaryList); // 获取主题色
+  let color = { C00: C00, ...themeTypeList[type] }; // 拼接色组
+  let index = getThemeIndex(theme, tPrimaryList); // 获取主题色 在深浅列表里的index
   const { dark, light } = themeTypeList; // 解耦深浅基础色
 
   return {
-    // 功能色
+    // 公共功能色
     "--c-primary": color.C00, // 主题色
     "--c-primary-rgb": hex2rgb(color.C00), // 主题色RGB
     "--c-primary-hover": mix(white, color.C00, 12),
@@ -121,45 +99,83 @@ const getVariables = (theme, primaryList, varList, themeType) => {
     "--c-icon-active": color.C01,
     "--c-icon-down": color.C10,
 
+    // 标准黑白
+    "--c-white": white,
+    "--c-black": black,
+
     // 标签色
-    // ...getTabColor(color),
+    //...getTabColor(color),
 
     // 自定义业务-写在全局变量
     // 主题变量color.vue
-    "--color-yanqi-test": mergeColor(
-      ["#444", "#666"],
-      ["#444", "#666"],
-      type,
-      theme,
-      tPrimaryList
-    ), // （1）完全自定义常量多态，一种主题色对应一种颜色
-    "--color-chq-test": mergeColor([dark.C01], [light.C02], type), // （2）只和深浅相关自定义常量多态，只和深浅基础色有关的颜色
 
-    // 业务自定义- 写在业务方变量
-    //由主题切换的时候，动态传入入的 自定义常量列表 varList
-    ...getBusinessVars(theme, type, varList, tPrimaryList),
+    // （1）只和深浅相关自定义常量多态，只和深浅基础色有关的颜色
+    // "--color-chq-test": mergeColor([dark.C01], [light.C02], type),
+    // "--color-chq-test01": mergeColor([mix(black, color.C02, 12)], [mix(white, color.C02, 12)], type),
+
+    // （2）完全自定义常量多态，一种主题色对应一种颜色
+    // "--color-yanqi-test": mergeColor(
+    //   ["#444", "#666"],
+    //   ["#444", "#666"],
+    //   type,
+    //   index
+    // ),
+
+    "--c-fill-module-1": mergeColor([dark.C13], [light.C11], type), //#15181A   #ffffff
+    "--c-fill-module-2": mergeColor([dark.C14], [light.C11], type), //#191C1F   #ffffff
+    "--c-fill-module-3": mergeColor([dark.C04], [light.C11], type), //#232428   #ffffff
+    "--c-fill-module-4": mergeColor([dark.C12], [light.C11], type), //#0e0f0f   #ffffff
+    "--c-fill-module-5": mergeColor([dark.C15], [light.C11], type), //#242222   #ffffff
+    "--c-fill-module-6": mergeColor([dark.C13], ["#e1e1e1"], type), //#242222   #e1e1e1
+
+    // 业务自定义 - 写在业务方变量
+    // 由主题切换的时候，动态传入入的 自定义常量列表 varList
+    ...getBusinessVars(varList, type, index),
+
   };
 };
 
 /**
+ * initThemes 全局初始化 主题
+ * @param theme 主题 [必填]  string :主题色名称
+ * @param tPrimaryList 主题列表 array :格式如 data/theme-data.js
+ * @param valList 自定义主题列表 array :格式可参考 business/color.js
+ * @param themeType 主题类型  string  :-深dark 浅light ....  并兼容格式如下文 const colorType
+ * @param changeType 区分改的是主题类型，还是主题色 [ 预留字段 ]....
+ * @returns {boolean}
+ */
+
+export const initThemes = (theme, tPrimaryList, varList, themeType) => {
+  let variables = getVariables(theme, tPrimaryList, varList, themeType);
+  cssVars({
+    watch: true, // 当添加，删除或修改其或元素的禁用或href属性时，ponyfill将自行调用
+    variables: variables, // variables 自定义属性名/值对的集合
+    onlyLegacy: true, // false  默认将css变量编译为浏览器识别的css样式  true 当浏览器不支持css变量的时候将css变量编译为识别的css
+  });
+};
+
+/**
  * initOnlyDomThemes 挂载在具体业务页面 DOM id, 支持自定义 主题常量对应一对多 方法
- * @param id  页面dom节点 #id
- * @param theme 主题
- * @param themesList 主题列表 array ['theme1','theme2']
- * @param valList 主题列表 {val1:['theme1-color','theme2-color']} ....
+ * @param id  string :页面dom节点 #id
+ * @param theme 主题 string
+ * @param themePrimaryList array   :格式如 data/theme-data.js
+ * @param valList 主题列表 array    :格式可参考 business/color.js
+ * @param themeType 主题类型 string : -深dark 浅light ....  并兼容格式如下文 const colorType
  * @returns {boolean}
  */
 
 export const initOnlyDomThemes = (
   id,
   theme,
-  themesList,
+  themePrimaryList,
   valList,
   themeType
 ) => {
   let index = 0; // 得到一个 主题的index
-  let type = themeType ? themeType : getThemeType(theme);
+  let type = themeType ? getThemeType(themeType) : getThemeTypeByTheme(theme); // 获取主题的类型 深-浅
+
   let keys = Object.keys(valList);
+  let themesList = themePrimaryList[type];
   themesList.forEach((item, index1) => {
     if (item == theme) {
       index = index1;
@@ -199,7 +215,8 @@ const getTabColor = (color) => {
 };
 
 const getCOO = (theme, primaryList) => {
-  return primaryList.filter((item) => item.theme == theme);
+  let color = primaryList.filter((item) => item.theme == theme);
+  return color[0].color;
 };
 
 const colorType = {
@@ -207,8 +224,19 @@ const colorType = {
   light: ["White", "white", "light", "Light"],
 };
 
-const getThemeType = (theme) => {
-  let result = "dark";
+const getThemeType = (type) => {
+  let result = "light";
+  Object.keys(colorType).forEach((item) => {
+    if (colorType[item].includes(type)) {
+      result = item;
+    }
+  });
+
+  return result;
+};
+
+const getThemeTypeByTheme = (theme) => {
+  let result = "light";
   Object.keys(colorType).forEach((item) => {
     colorType[item].forEach((item1) => {
       if (theme.search(item1) > -1) {
@@ -221,12 +249,11 @@ const getThemeType = (theme) => {
 };
 
 // 获取业务组件的自定义vars
-const getBusinessVars = (theme, type, list, tPrimaryList) => {
+const getBusinessVars = (list, type, index) => {
   let myList = list ? list : getRouterVar(); // 如果没有传list手动传了，通过路由动态获取
   let keys = Object.keys(myList),
-    index = getThemeIndex(theme, tPrimaryList);
+    vars = {};
 
-  let vars = {};
   keys.forEach((item) => {
     vars[item] = myList[item][type][index];
   });
@@ -235,24 +262,18 @@ const getBusinessVars = (theme, type, list, tPrimaryList) => {
 
 /**
  * mergeColor 获取在当前主题下该变量（自定义）的颜色
- * @param darkList [必填]  自定义常量在不同主题下的 深色系颜色列表   array ['theme1','theme2']
- * @param lightList [必填]  自定义常量在不同主题下的 浅色系颜色列表   array ['theme1','theme2']
- * @param type 主题类型  深 - 浅
- * @param theme 主题色-名
- * @param tPrimaryList 主题列表
- * @returns {boolean}
+ * @param darkList [必填] array :自定义常量在不同主题下的 深色系颜色列表    ['theme1','theme2']
+ * @param lightList [必填]  array: 自定义常量在不同主题下的 浅色系颜色列表    ['theme1','theme2']
+ * @param type 主题类型  string : 深 - 浅
+ * @param index 主题色 number :-对应的index
+ * @returns {string}
  */
 
-const mergeColor = (darkList, lightList, type, theme, tPrimaryList) => {
+const mergeColor = (darkList, lightList, type, index) => {
   let colorList = type == "dark" ? darkList : lightList;
-  let color = colorList[0],
-    index = 0;
-  // 如果 type 有值说明 该自定义主题常量，只和深浅基础色 （两种）有关
-  if (!theme) {
-    color = type == "dark" ? darkList[0] : lightList[0];
-  } else {
-    // 否则认为是 一种主题 一种色值
-    index = getThemeIndex(theme, tPrimaryList);
+  let color = colorList[0];
+  // 如果 index 有值，说明是完全自定义
+  if (index != undefined) {
     color = colorList[index];
   }
   return color;
