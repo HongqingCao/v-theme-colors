@@ -22,4 +22,5 @@ export default defineConfig({
       resolvers: [ElementPlusResolver()],
     }),
   ],
+  base:'/v-theme-colors/'
 });
